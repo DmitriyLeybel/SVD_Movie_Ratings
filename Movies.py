@@ -1,6 +1,9 @@
-from sklearn.decomposition import TruncatedSVD
+from sklearn.decomposition import TruncatedSVD,PCA
 import scipy as sp
 from random import *
+from sklearn.feature_selection import RFE
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D as a3
 
 class mPredictor():
 
@@ -29,7 +32,7 @@ class mPredictor():
             vxmc[i,:] = row
         return vxmc
 
-    def predict(self,cut, vxm=None):
+    def predict(self,cut,export=0, vxm=None):
 
         if vxm is None:
             vxm = self.vxm
@@ -46,7 +49,10 @@ class mPredictor():
         S = S[:cut,:cut]
 
         new_vxm = sp.dot(U, sp.dot(S, V))
-        return new_vxm
+        if export == 0:
+            return new_vxm
+        else:
+            return new_vxm
 
     def errorApproximation(self, ratio, dim=20):
 
@@ -57,7 +63,7 @@ class mPredictor():
 
         elementList = []
 
-        nonZeroTuple = sp.nonzero(mat.vxm)
+        nonZeroTuple = sp.nonzero(self.vxm)
 
         for x in range(int(numTest)):
             rInt = sp.random.randint(0,nonZeroTuple[0].size)
@@ -72,7 +78,7 @@ class mPredictor():
         for x in elementList:
             self.modvxm[x[0],x[1]] = 0
 
-        self.fillAverages(vxm = self.modvxm)
+        self.modvmx = self.fillAverages(vxm = self.modvxm)
         self.newmodvxm = self.predict(dim,vxm=self.modvxm)
 
         sqDiff = 0
@@ -85,27 +91,28 @@ class mPredictor():
         # print(self.newmodvxm[elementList[0][0],elementList[1][0]])
         # print(self.rmse)
 
-
-# mat = mPredictor('u.data',[943,1682])
-
-# x = mat.predict(cut=20)
-
-# mat.errorApproximation(.15,dim=5)
-# print(mat.rmse)
-dimList = []
-for x in [1,2,3,4,5,10,40,100,200,400,800]:
+if __name__ == "__main__":
     mat = mPredictor('u.data',[943,1682])
-    mat.errorApproximation(.15,dim=x)
-    print(x,': ',mat.rmse)
-    dimList.append(mat.rmse)
+    mat.buildMatrix()
+    vxm = mat.vxm
+    pc = PCA(n_components=3)
+    z = pc.fit_transform(vxm)
 
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    ax.scatter(z[:,0],z[:,1], z[:,2])
+    plt.show()
 
+    #svd = TruncatedSVD(n_components=3)
+    #svd.fit(vxm)
+    #selector = RFE(svd,n_features_to_select=2)
+    # x = mat.predict(cut=20)
 
-
-
-
-
-
-
-
-
+    mat.errorApproximation(.15,dim=5)
+    print(mat.rmse)
+    dimList = []
+    for x in [1,2,3,4,5,10,40,100,200,400,800]:
+        mat = mPredictor('u.data',[943,1682])
+        mat.errorApproximation(.15,dim=x)
+        print(x,': ',mat.rmse)
+        dimList.append(mat.rmse)
